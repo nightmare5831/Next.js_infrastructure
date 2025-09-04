@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Multi-tenant support
+model Tenant {
+  id            String    @id @default(uuid())
+  name          String
+  slug          String    @unique
+  domain        String?
+  apiKey        String    @unique @default(uuid())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  users         User[]
+  segments      Segment[]
+  events        Event[]
+  subscription  Subscription?
+  
+  @@map("tenants")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  role          UserRole  @default(MEMBER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  tenantId      String
+  
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@map("users")
+}
+
+// Segments with UTM rules
+model Segment {
+  id            String    @id @default(uuid())
+  slug          String
+  name          String
+  description   String?
+  rules         Json      // UTM matching rules (regex patterns)
+  persona       String?   // Target persona description
+  isActive      Boolean   @default(true)
+  priority      Int       @default(0) // Higher priority rules match first
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  tenantId      String
+  
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  variants      SegmentVariant[]
+  events        Event[]
+  
+  @@unique([tenantId, slug])
+  @@map("segments")
+}
+
+// Copy variants for each segment
+model SegmentVariant {
+  id            String    @id @default(uuid())
+  name          String
+  isActive      Boolean   @default(true)
+  isAiGenerated Boolean   @default(false)
+  
+  headline      String?
+  subheadline   String?
+  bulletPoints  Json?     // Array of bullet points
+  ctaText       String?
+  bodyCopy      String?
+  
+  views         Int       @default(0)
+  clicks        Int       @default(0)
+  conversions   Int       @default(0)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  segmentId     String
+  
+  segment       Segment   @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  
+  @@map("segment_variants")
+}
+
+// Event tracking
+model Event {
+  id            String    @id @default(uuid())
+  type          EventType
+  visitorId     String   
+  
+  utmSource     String?
+  utmMedium     String?
+  utmCampaign   String?
+  utmContent    String?
+  utmTerm       String?
+  gclid         String?   // Google Click ID
+  fbclid        String?   // Facebook Click ID
+  
+  revenue       Decimal?  @db.Decimal(10, 2)
+  metadata      Json?     // Additional event data
+  isHoldout     Boolean   @default(false) // 5-10% holdout group
+  
+  createdAt     DateTime  @default(now())
+  tenantId      String
+  segmentId     String?
+  
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  segment       Segment?  @relation(fields: [segmentId], references: [id])
+  
+  @@index([tenantId, createdAt])
+  @@index([visitorId])
+  @@map("events")
+}
+
+// Stripe subscription
+model Subscription {
+  id                String    @id @default(uuid())
+  stripeCustomerId  String?   @unique
+  stripePriceId     String?
+  stripeSubId       String?   @unique
+  plan              Plan      @default(TRIAL)
+  status            SubscriptionStatus @default(TRIALING)
+  trialEndsAt       DateTime?
+  currentPeriodEnd  DateTime?
+  canceledAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  tenantId          String    @unique
+  
+  tenant            Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@map("subscriptions")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum EventType {
+  PAGE_VIEW
+  CTA_CLICK
+  CONVERSION
+  PURCHASE
+}
+
+enum Plan {
+  TRIAL
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  INCOMPLETE
+}
