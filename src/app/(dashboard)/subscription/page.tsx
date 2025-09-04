@@ -96,9 +96,9 @@ export default function SubscriptionPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-8 overflow-x-auto">
       {/* Pricing Header */}
-      <div className="mx-auto max-w-7xl text-center">
+      <div className="mx-auto max-w-7xl text-center mb-12">
         <h2 className="text-4xl font-bold tracking-tight">Choose Your Plan</h2>
         <p className="mt-4 text-lg text-muted-foreground">
           Start free and scale as you grow. No hidden fees.
@@ -127,8 +127,8 @@ export default function SubscriptionPage() {
       </div>
 
       {/* Pricing Cards */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-24">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+      <div className="mx-auto max-w-7xl mt-12">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
           {pricingPlans.map((plan) => {
             const price = billingInterval === 'year' ? Math.floor(plan.price * 0.8) : plan.price
             const isCurrentPlan = selectedPlan === plan.id

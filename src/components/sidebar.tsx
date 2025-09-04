@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 type NavItem = {
   name: string
@@ -71,6 +72,22 @@ const navigation: NavItem[] = [
 export default function Sidebar() {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    // Get initial user
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user)
+    })
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   return (
     <>
@@ -139,14 +156,26 @@ export default function Sidebar() {
             <div className="flex items-center px-3">
               <div className="flex-shrink-0">
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-sm font-medium text-primary">U</span>
+                  <span className="text-sm font-medium text-primary">
+                    {user?.email?.charAt(0).toUpperCase() || 'U'}
+                  </span>
                 </div>
               </div>
               <div className="ml-3 flex-1">
-                <p className="text-sm font-medium">User Name</p>
-                <p className="text-xs text-muted-foreground">user@example.com</p>
+                <p className="text-sm font-medium">
+                  {user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'}
+                </p>
+                <p className="text-xs text-muted-foreground">{user?.email || 'No email'}</p>
               </div>
-              <button className="ml-auto p-1 rounded-md hover:bg-muted">
+              <button 
+                onClick={async () => {
+                  const { createClient } = await import('@/lib/supabase/client')
+                  const supabase = createClient()
+                  await supabase.auth.signOut()
+                  window.location.href = '/login'
+                }}
+                className="ml-auto p-1 rounded-md hover:bg-muted"
+              >
                 <svg className="h-5 w-5 text-muted-foreground" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                   <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
