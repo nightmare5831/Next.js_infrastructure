@@ -1,4 +1,14 @@
-export default function HomePage() {
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+
+export default async function HomePage() {
+  const supabase = await createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (session) {
+    redirect('/dashboard')
+  }
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-24">
       <main className="flex flex-col items-center justify-center">
