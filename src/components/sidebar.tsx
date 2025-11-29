@@ -1,8 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import type { User } from '@supabase/supabase-js'
 
 type NavItem = {
   name: string
@@ -33,7 +35,49 @@ const navigation: NavItem[] = [
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const supabase = createClient()
+
+  useEffect(() => {
+    // Get initial user
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+      setIsLoading(false)
+    }
+
+    getUser()
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [supabase.auth])
+
+  const handleLogout = async () => {
+    try {
+      // Call the logout API endpoint for server-side session cleanup
+      await fetch('/api/logout', {
+        method: 'POST',
+      })
+
+      // Also sign out on the client
+      await supabase.auth.signOut()
+
+      // Redirect to login page
+      router.push('/login')
+      router.refresh()
+    } catch (error) {
+      console.error('Error logging out:', error)
+    }
+  }
 
   return (
     <>
@@ -102,14 +146,25 @@ export default function Sidebar() {
             <div className="flex items-center px-3">
               <div className="flex-shrink-0">
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-sm font-medium text-primary">U</span>
+                  <span className="text-sm font-medium text-primary">
+                    {isLoading ? '...' : user?.user_metadata?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
+                  </span>
                 </div>
               </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium">User Name</p>
-                <p className="text-xs text-muted-foreground">user@example.com</p>
+              <div className="ml-3 flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {isLoading ? 'Loading...' : user?.user_metadata?.name || user?.email?.split('@')[0] || 'User'}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {isLoading ? '' : user?.email || 'user@example.com'}
+                </p>
               </div>
-              <button className="ml-auto p-1 rounded-md hover:bg-muted">
+              <button
+                onClick={handleLogout}
+                disabled={isLoading}
+                className="ml-auto p-1 rounded-md hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Logout"
+              >
                 <svg className="h-5 w-5 text-muted-foreground" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                   <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
