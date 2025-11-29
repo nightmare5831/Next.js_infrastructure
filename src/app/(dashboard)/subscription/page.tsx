@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Request from '@/lib/request'
 
 type PricingPlan = {
   id: string
@@ -72,23 +71,15 @@ export default function SubscriptionPage() {
   const handleSubscribe = async (plan: PricingPlan) => {
     setIsLoading(true)
     setSelectedPlan(plan.id)
-    
+
     try {
-      // Create Stripe checkout session
-      const response = await Request.Post('/api/stripe/create-checkout-session', {
-        priceId: plan.stripePriceId,
-        planId: plan.id,
-        interval: billingInterval
-      })
-      
-      // Redirect to Stripe checkout
-      if (response.sessionUrl) {
-        window.location.href = response.sessionUrl
-      }
-      
+      // TODO: Implement Stripe checkout session
+      // For now, just show console log
+      console.log('Selected plan:', plan.name, plan.stripePriceId)
+      alert(`Stripe integration coming soon! Selected: ${plan.name}`)
+
     } catch (error) {
       console.error('Subscription error:', error)
-      // TODO: Show error toast/notification
     } finally {
       setIsLoading(false)
       setSelectedPlan(null)

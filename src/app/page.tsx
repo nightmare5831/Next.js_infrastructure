@@ -15,12 +15,6 @@ export default function HomePage() {
           >
             Get Started
           </a>
-          <a
-            href="/dashboard"
-            className="px-6 py-3 border border-border rounded-md hover:bg-accent transition-colors"
-          >
-            Dashboard
-          </a>
         </div>
       </main>
     </div>
