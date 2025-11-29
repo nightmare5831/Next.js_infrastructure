@@ -1,6 +1,72 @@
+'use client'
+
 import Link from 'next/link'
+import { useState } from 'react'
 
 export default function SignupPage() {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    terms: false
+  })
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }))
+  }
+
+  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match')
+      setLoading(false)
+      return
+    }
+
+    if (!formData.terms) {
+      setError('Please accept the terms and conditions')
+      setLoading(false)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error)
+        setLoading(false)
+      } else {
+        setSuccess(true)
+        setFormData({ name: '', email: '', password: '', confirmPassword: '', terms: false })
+        setLoading(false)
+      }
+    } catch (error) {
+      setError('Registration failed. Please try again.')
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="w-full max-w-md space-y-8 px-4">
@@ -18,8 +84,20 @@ export default function SignupPage() {
             </Link>
           </p>
         </div>
-        
-        <form className="mt-8 space-y-6">
+
+        {error && (
+          <div className="rounded-md bg-red-50 p-4 text-sm text-red-800">
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="rounded-md bg-green-50 p-4 text-sm text-green-800">
+            Registration successful! Please check your email and click the confirmation link before logging in.
+          </div>
+        )}
+
+        <form className="mt-8 space-y-6" onSubmit={handleSignup}>
           <div className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium">
@@ -31,11 +109,13 @@ export default function SignupPage() {
                 type="text"
                 autoComplete="name"
                 required
+                value={formData.name}
+                onChange={handleInputChange}
                 className="mt-1 block w-full rounded-md border border-input px-3 py-2 text-sm placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="Enter your full name"
               />
             </div>
-            
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium">
                 Email address
@@ -46,11 +126,13 @@ export default function SignupPage() {
                 type="email"
                 autoComplete="email"
                 required
+                value={formData.email}
+                onChange={handleInputChange}
                 className="mt-1 block w-full rounded-md border border-input px-3 py-2 text-sm placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="Enter your email"
               />
             </div>
-            
+
             <div>
               <label htmlFor="password" className="block text-sm font-medium">
                 Password
@@ -61,33 +143,39 @@ export default function SignupPage() {
                 type="password"
                 autoComplete="new-password"
                 required
+                value={formData.password}
+                onChange={handleInputChange}
                 className="mt-1 block w-full rounded-md border border-input px-3 py-2 text-sm placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="Create a password"
               />
             </div>
-            
+
             <div>
-              <label htmlFor="confirm-password" className="block text-sm font-medium">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium">
                 Confirm password
               </label>
               <input
-                id="confirm-password"
-                name="confirm-password"
+                id="confirmPassword"
+                name="confirmPassword"
                 type="password"
                 autoComplete="new-password"
                 required
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
                 className="mt-1 block w-full rounded-md border border-input px-3 py-2 text-sm placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="Confirm your password"
               />
             </div>
           </div>
-          
+
           <div className="flex items-center">
             <input
               id="terms"
               name="terms"
               type="checkbox"
               required
+              checked={formData.terms}
+              onChange={handleInputChange}
               className="h-4 w-4 rounded border-gray-300"
             />
             <label htmlFor="terms" className="ml-2 block text-sm">
@@ -97,12 +185,13 @@ export default function SignupPage() {
               </a>
             </label>
           </div>
-          
+
           <button
             type="submit"
-            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            disabled={loading}
+            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50"
           >
-            Create account
+            {loading ? 'Creating account...' : 'Create account'}
           </button>
         </form>
       </div>
